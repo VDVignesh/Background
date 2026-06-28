@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap');
+
+        .black-ops-one-regular {
+  font-family: "Black Ops One", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+    .bebas-neue-regular {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Video Background */
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        /* Content Overlay */
+        .content {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            background: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
+            padding: 20px;
+        }
+
+        .info-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        .time {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #FFB6D9; /* Light pink */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .date {
+            font-size: 1.8rem;
+            color: #FFC0CB; /* Lighter pink */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .weather {
+            font-size: 1.5rem;
+            color: #FFD4E5; /* Even lighter pink */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <!-- Video Background -->
+    <video autoplay muted loop>
+        <source src="./videobackground.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Content Overlay -->
+    <div class="content">
+        <div class="info-container">
+            <div class="time black-ops-one-regular" id="time"></div>
+            <div class="date bebas-neue-regular" id="date"></div>
+            <div class="weather bebas-neue-regular" id="weather">Loading weather...</div>
+        </div>
+    </div>
+
+    <script>
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            document.getElementById('time').textContent = timeString;
+        }
+
+        // Update date
+        function updateDate() {
+            const now = new Date();
+            const dateString = now.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            document.getElementById('date').textContent = dateString;
+        }
+
+        // Fetch weather (using Open-Meteo API - no API key required)
+        async function updateWeather() {
+            try {
+                // Get user's approximate location using IP-based geolocation
+                const geoResponse = await fetch('https://ipapi.co/json/');
+                const geoData = await geoResponse.json();
+                const lat = geoData.latitude;
+                const lon = geoData.longitude;
+
+                // Fetch weather data with Celsius
+                const weatherResponse = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m&temperature_unit=celsius`
+                );
+                const weatherData = await weatherResponse.json();
+                const current = weatherData.current;
+
+                const weatherDescription = getWeatherDescription(current.weather_code);
+                const locationName = `${geoData.city}, ${geoData.country_name}`;
+                const weatherText = `${locationName} | ${weatherDescription} | ${Math.round(current.temperature_2m)}°C`;
+                document.getElementById('weather').textContent = weatherText;
+            } catch (error) {
+                console.error('Error fetching weather:', error);
+                document.getElementById('weather').textContent = 'Weather unavailable';
+            }
+        }
+
+        // Map WMO weather codes to descriptions
+        function getWeatherDescription(code) {
+            const weatherCodes = {
+                0: '☀️ Clear',
+                1: '🌤 Mostly Clear',
+                2: '⛅ Partly Cloudy',
+                3: '☁️ Overcast',
+                45: '🌫 Foggy',
+                48: '🌫 Foggy',
+                51: '🌧 Light Drizzle',
+                53: '🌧 Drizzle',
+                55: '🌧 Heavy Drizzle',
+                61: '🌧 Light Rain',
+                63: '🌧 Rain',
+                65: '🌧 Heavy Rain',
+                71: '❄️ Light Snow',
+                73: '❄️ Snow',
+                75: '❄️ Heavy Snow',
+                77: '❄️ Snow Grains',
+                80: '🌧 Light Showers',
+                81: '🌧 Showers',
+                82: '🌧 Heavy Showers',
+                85: '❄️ Snow Showers',
+                86: '❄️ Heavy Snow Showers',
+                95: '⛈ Thunderstorm',
+                96: '⛈ Thunderstorm with Hail',
+                99: '⛈ Thunderstorm with Hail'
+            };
+            return weatherCodes[code] || 'Unknown';
+        }
+
+        // Initialize
+        updateTime();
+        updateDate();
+        updateWeather();
+
+        // Update time every second
+        setInterval(updateTime, 1000);
+
+        // Update weather every 30 minutes
+        setInterval(updateWeather, 30 * 60 * 1000);
+    </script>
+</body>
+</html>
